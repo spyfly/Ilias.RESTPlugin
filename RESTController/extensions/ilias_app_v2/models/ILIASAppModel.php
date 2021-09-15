@@ -144,8 +144,9 @@ final class ILIASAppModel extends Libs\RESTModel
         $fileName = mb_strtolower($file->getFileName());
         $fileName = preg_replace('/[^a-z0-9\-_\.]+/', '', $fileName);
 
+        //The new ResourceStorage in ILIAS 7.2 does not implement the file extension method call.
         return array(
-            'fileExtension' => $file->getFileExtension(),
+            'fileExtension' => $this->getFileExtensionOrEmptyString($file),
             'fileName' => $fileName,
             'fileSize' => $file->getFileSize(),
             'fileType' => $file->getFileType(),
@@ -161,6 +162,14 @@ final class ILIASAppModel extends Libs\RESTModel
             return $this->getChildrenRecursiveOnNestedSet($refId, $userId);
         } else {
             return $this->getChildrenRecursiveOnMaterializedPath($refId, $userId);
+        }
+    }
+
+    private function getFileExtensionOrEmptyString(\ilObjFile $file) {
+        try {
+            return $file->getFileExtension();
+        } catch (\Exception $exception) {
+            return '';
         }
     }
 
