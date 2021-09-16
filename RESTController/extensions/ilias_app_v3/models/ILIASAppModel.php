@@ -133,8 +133,9 @@ final class ILIASAppModel extends Libs\RESTModel {
         $ret = $ilDB->query($q);
         $fileLearningProgress = boolval($ilDB->fetchAssoc($ret)["status"]);
 
+        //The new ResourceStorage in ILIAS 7.2 does not implement the file extension method call.
         return ["body" => array(
-            'fileExtension' => $file->getFileExtension(),
+            'fileExtension' => $this->getFileExtensionOrEmptyString($file),
             'fileName' => $fileName,
             'fileSize' => strval($file->getFileSize()),
             'fileType' => $file->getFileType(),
@@ -197,6 +198,23 @@ final class ILIASAppModel extends Libs\RESTModel {
             "themeTimestamp" => intval($dat["timestamp"]),
             "themeIconResources" => $resources
         )];
+    }
+
+    private function getFileExtensionOrEmptyString(\ilObjFile $file) {
+        try {
+            return $file->getFileExtension();
+        } catch (\Exception $exception) {
+            return $this->extractFileExtension($file->getFileName());
+        }
+    }
+
+    private function extractFileExtension(string $filename) {
+        if (!str_contains($filename, '.')) {
+            return '';
+        }
+
+        $filenameParts = explode('.', $filename);
+        return array_pop($filenameParts);
     }
 
     /**
