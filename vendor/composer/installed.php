@@ -5,7 +5,7 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => 'ee03aceaca8ca754e4f3d0fd86d106511dae7852',
+        'reference' => 'ece970a4236ddf4f8b169c8ba7f235966f2095d1',
         'name' => 'fluxlabs/rest-legacy',
         'dev' => true,
     ),
@@ -16,7 +16,7 @@
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => 'ee03aceaca8ca754e4f3d0fd86d106511dae7852',
+            'reference' => 'ece970a4236ddf4f8b169c8ba7f235966f2095d1',
             'dev_requirement' => false,
         ),
         'phplang/scope-exit' => array(

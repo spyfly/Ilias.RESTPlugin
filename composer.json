@@ -3,6 +3,9 @@
     "description": "Ilias REST plugin fork.",
     "type": "project",
     "license": "gpl-v3",
+    "support": {
+        "email": "support@fluxlabs.ch"
+    },
     "minimum-stability": "stable",
     "config": {
         "optimize-autoloader": true,
