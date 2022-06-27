@@ -1,4 +1,6 @@
-<?php namespace RESTController\extensions\ILIASApp\V1;
+<?php
+
+namespace RESTController\extensions\ILIASApp\V1;
 
 use CallbackFilterIterator;
 use ilAccessHandler;
@@ -19,7 +21,8 @@ use ilException;
 require_once('./Modules/File/classes/class.ilObjFile.php');
 
 
-final class ILIASAppModel extends Libs\RESTModel {
+final class ILIASAppModel extends Libs\RESTModel
+{
 
     /**
      * @var ilDBInterface
@@ -36,7 +39,8 @@ final class ILIASAppModel extends Libs\RESTModel {
     private $filesystem;
 
 
-    public function __construct() {
+    public function __construct()
+    {
         global $DIC;
         Libs\RESTilias::loadIlUser();
         $this->db = $DIC->database();
@@ -50,39 +54,68 @@ final class ILIASAppModel extends Libs\RESTModel {
      * @param $refId string reference of the learning module
      * @return array body and status
      */
-    public function getLearningModuleData($refId) {
+    public function getLearningModuleData($refId)
+    {
         // check access
-        if(!($this->isVisible($refId) && $this->isRead($refId)))
+        if (!($this->isVisible($refId) && $this->isRead($refId)))
             return ["body" => new HttpStatusCodeAnswer("Forbidden"), "status" => 403];
 
         // get objectId and type of the object
         $objId = ilObject::_lookupObjId($refId);
         $type = ilObject::_lookupType($objId);
 
-        // check if the object is a supported lm
-        if($type !== "htlm" && $type !== "sahs")
-            return ["body" => new HttpStatusCodeAnswer("Forbidden"), "status" => 403];
+        if ($type == "htlm" || $type == "sahs") { // HTML Learning Modules and SAHS
+            // get learning module data
+            $startFile = $this->getStartFile($objId, $type);
+            if (strlen($startFile) === 0) {
+                // We are unable to find all the information for the entry point therefore no resource is found
+                return ["body" => new HttpStatusCodeAnswer("No entry point found for HTLM object"), "status" => 404];
+            }
 
-        // get learning module data
-        $startFile = $this->getStartFile($objId, $type);
-        if (strlen($startFile) === 0) {
-            // We are unable to find all the information for the entry point therefore no resource is found
-            return ["body" => new HttpStatusCodeAnswer("No entry point found for HTLM object"), "status" => 404];
+            $zipResult = $this->getCompressedLearningModule($objId);
+
+            // if the compression failed, return status 500
+            if (!$zipResult["success"])
+                return ["body" => new HttpStatusCodeAnswer("Internal Server Error"), "status" => 500];
+
+            return ["body" => array(
+                "startFile" => $startFile,
+                "zipFile" => $zipResult["file"],
+                "zipDirName" => $zipResult["dirName"],
+                "timestamp" => $zipResult["timestamp"],
+            )];
+        } else if ($type == "copa") { // ILIAS Content Pages
+            $contentPage = new \ilContentPagePage($objId);
+            return [
+                "body" => array(
+                    "xmlContent" => $contentPage->getXMLContent()
+                )
+            ];
+        } else if ($type == "lm") { // ILIAS Learning Module
+            $learningModule = new \ilObjLearningModule($refId);
+            $tree = $learningModule->getTree();
+            $lmTreeContent = $tree->getSubTree($tree->getNodeData($tree->readRootId()));
+            $lmContent = array();
+            foreach ($lmTreeContent as $lmObj) {
+                if ($lmObj['type'] == "pg") {
+                    $lmPage = new \ilLMPage($lmObj['obj_id']);
+                    $lmContent[] = [
+                        "title" => $lmObj['title'],
+                        "xmlContent" => $lmPage->getXMLContent()
+                    ];
+                }
+            }
+            return [
+                "body" => array(
+                    "title" => $learningModule->getTitle(),
+                    //"tree" => $lmTreeContent,
+                    "content" => $lmContent
+                )
+            ];
         }
-
-        $zipResult = $this->getCompressedLearningModule($objId);
-
-        // if the compression failed, return status 500
-        if(!$zipResult["success"])
-            return ["body" => new HttpStatusCodeAnswer("Internal Server Error"), "status" => 500];
-        
-        return ["body" => array(
-            "startFile" => $startFile,
-            "zipFile" => $zipResult["file"],
-            "zipDirName" => $zipResult["dirName"],
-            "timestamp" => $zipResult["timestamp"],
-        )];
-	}
+        // Unsupported LM
+        return ["body" => new HttpStatusCodeAnswer("Forbidden"), "status" => 403];
+    }
 
     /**
      * reads the start file of the FileBasedLM with the given object-id
@@ -91,8 +124,9 @@ final class ILIASAppModel extends Libs\RESTModel {
      * @param $type string type of the lm
      * @return string
      */
-	private function getStartFile($objId, $type) {
-        if($type === "htlm") {
+    private function getStartFile($objId, $type)
+    {
+        if ($type === "htlm") {
 
             $startPath = ilObjFileBasedLMAccess::_determineStartUrl($objId);
 
@@ -114,7 +148,8 @@ final class ILIASAppModel extends Libs\RESTModel {
      * @param $objId integer objectId of the learning module
      * @return array<mixed> the result of the compression
      */
-    private function getCompressedLearningModule($objId) {
+    private function getCompressedLearningModule($objId)
+    {
 
         try {
             // build the source and target paths
@@ -131,12 +166,12 @@ final class ILIASAppModel extends Libs\RESTModel {
 
             // if necessary, compress the learning module
             $success = true;
-            if(!$this->filesystem->has($targetZipFile)) {
+            if (!$this->filesystem->has($targetZipFile)) {
                 // empty the directory
                 $entries = $this->filesystem->listContents("$restLmDir/$lmDirName");
-                foreach($entries as $e) {
+                foreach ($entries as $e) {
                     $path = $e->getPath();
-                    if($e->isFile()) $this->filesystem->delete($path);
+                    if ($e->isFile()) $this->filesystem->delete($path);
                     else $this->filesystem->deleteDir($path);
                 }
                 // compress the learning module
@@ -159,10 +194,11 @@ final class ILIASAppModel extends Libs\RESTModel {
      * @return int the timestamp
      * @throws DirectoryNotFoundException
      */
-    function getMaxTimeStampRecursively(&$root, $path, &$timestamp = -1) {
+    function getMaxTimeStampRecursively(&$root, $path, &$timestamp = -1)
+    {
         $timestamp = max(stat("$root/$path")["mtime"], $timestamp);
         $entries = $this->filesystem->listContents($path);
-        foreach($entries as $e) {
+        foreach ($entries as $e) {
             $path = $e->getPath();
             $timestamp = $e->isFile() ? max(stat("$root/$path")["mtime"], $timestamp) : $this->getMaxTimeStampRecursively($root, $path, $timestamp);
         }
@@ -177,8 +213,9 @@ final class ILIASAppModel extends Libs\RESTModel {
      * @param $targetFilePath string file that will contain the zipped source
      * @return bool true if the zip-command was executed successfully and false otherwise
      */
-    private function zip($sourceDir, $source, $targetFilePath) {
-        if(!(defined("PATH_TO_ZIP") && defined("PATH_TO_UNZIP"))) return false;
+    private function zip($sourceDir, $source, $targetFilePath)
+    {
+        if (!(defined("PATH_TO_ZIP") && defined("PATH_TO_UNZIP"))) return false;
         $workingDir = getcwd();
 
         try {
@@ -194,7 +231,7 @@ final class ILIASAppModel extends Libs\RESTModel {
             $strError = "error";
             $result = ilUtil::execQuoted(PATH_TO_ZIP, $zipCmd);
             $result = implode(" | ", $result);
-            if(strpos($result, $strError) !== false && strpos($zipCmd, $strError) === false) return false;
+            if (strpos($result, $strError) !== false && strpos($zipCmd, $strError) === false) return false;
         } finally {
             // navigate back to working dir
             chdir($workingDir);
@@ -203,7 +240,8 @@ final class ILIASAppModel extends Libs\RESTModel {
         return true;
     }
 
-    private function buildInlineStringListForShell(array $args) {
+    private function buildInlineStringListForShell(array $args)
+    {
         if (count($args) === 0) {
             return "";
         }
@@ -217,7 +255,8 @@ final class ILIASAppModel extends Libs\RESTModel {
         return "-x $flatList";
     }
 
-    private function generateFileIgnoreList($path) {
+    private function generateFileIgnoreList($path)
+    {
         $ignoreList = [];
         $basePath = realpath($path);
         $zipFileIterator = new CallbackFilterIterator(
@@ -241,7 +280,8 @@ final class ILIASAppModel extends Libs\RESTModel {
         return $ignoreList;
     }
 
-    private function isZippedSahsModule($zipPath) {
+    private function isZippedSahsModule($zipPath)
+    {
         $escapedPath = ilUtil::escapeShellArg($zipPath);
         $zipCmd = "-Z1 $escapedPath";
         $execResult = ilUtil::execQuoted(PATH_TO_UNZIP, $zipCmd);
@@ -258,7 +298,8 @@ final class ILIASAppModel extends Libs\RESTModel {
      * @param $refId int a ref_id to check the access
      * @return bool true if the permission is visible, otherwise false
      */
-    private function isVisible($refId) {
+    private function isVisible($refId)
+    {
         return $this->access->checkAccess('visible', '', $refId);
     }
 
@@ -269,7 +310,8 @@ final class ILIASAppModel extends Libs\RESTModel {
      * @param $refId int a ref_id to check the access
      * @return bool true if the permission is read, otherwise false
      */
-    private function isRead($refId) {
+    private function isRead($refId)
+    {
         return $this->access->checkAccess('read', '', $refId);
     }
 }
