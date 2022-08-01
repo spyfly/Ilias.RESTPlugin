@@ -99,9 +99,11 @@ final class ILIASAppModel extends Libs\RESTModel
             foreach ($lmTreeContent as $lmObj) {
                 if ($lmObj['type'] == "pg") {
                     $lmPage = new \ilLMPage($lmObj['obj_id']);
+                    $lmPage->buildDom();
                     $lmContent[] = [
                         "title" => $lmObj['title'],
-                        "xmlContent" => $lmPage->getXMLContent()
+                        "xmlContent" => $lmPage->getXMLContent(),
+                        "multimediaXml" => $lmPage->getMultimediaXML()
                     ];
                 }
             }
