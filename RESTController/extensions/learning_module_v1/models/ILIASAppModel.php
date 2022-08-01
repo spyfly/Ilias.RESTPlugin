@@ -79,6 +79,7 @@ final class ILIASAppModel extends Libs\RESTModel
                 return ["body" => new HttpStatusCodeAnswer("Internal Server Error"), "status" => 500];
 
             return ["body" => array(
+                "type" => $type,
                 "startFile" => $startFile,
                 "zipFile" => $zipResult["file"],
                 "zipDirName" => $zipResult["dirName"],
@@ -88,6 +89,7 @@ final class ILIASAppModel extends Libs\RESTModel
             $contentPage = new \ilContentPagePage($objId);
             return [
                 "body" => array(
+                    "type" => $type,
                     "xmlContent" => $contentPage->getXMLContent()
                 )
             ];
@@ -109,6 +111,7 @@ final class ILIASAppModel extends Libs\RESTModel
             }
             return [
                 "body" => array(
+                    "type" => $type,
                     "title" => $learningModule->getTitle(),
                     //"tree" => $lmTreeContent,
                     "content" => $lmContent
