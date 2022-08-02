@@ -17,6 +17,7 @@ use RESTController\extensions\ILIASApp\V2\data\HttpStatusCodeAnswer;
 use RESTController\libs as Libs;
 use SplFileInfo;
 use ilException;
+use ilObjH5P;
 
 require_once('./Modules/File/classes/class.ilObjFile.php');
 
@@ -46,6 +47,9 @@ final class ILIASAppModel extends Libs\RESTModel
         $this->db = $DIC->database();
         $this->access = $DIC->access();
         $this->filesystem = $DIC->filesystem()->web();
+        if (!$DIC->offsetExists('tpl')) {
+            $DIC['tpl'] = new \stdClass();
+        }
     }
 
     /**
@@ -102,10 +106,36 @@ final class ILIASAppModel extends Libs\RESTModel
                 if ($lmObj['type'] == "pg") {
                     $lmPage = new \ilLMPage($lmObj['obj_id']);
                     $lmPage->buildDom();
+                    $questionIds = $lmPage->getQuestionIds();
+                    $pool = new \ilObjQuestionPool();
+                    $xmlContent = $lmPage->getXMLContent();
+                    
+                    preg_match_all('/<Plugged PluginName=\\"H5PPageComponent\\" [^>]*><PluggedProperty Name=\\"content_id\\">([0-9]*)<\/PluggedProperty><\/Plugged>/', $xmlContent, $h5pRaw);
+                    $questionsXhfp = [];
+                    if (count($h5pRaw[1]) > 0) {
+                        $db = $this->db;
+                        foreach ($h5pRaw[1] as $h5pContentId) {
+                            $hset = $db->query("SELECT name FROM rep_robj_xhfp_lib LEFT JOIN rep_robj_xhfp_cont ON rep_robj_xhfp_lib.library_id = rep_robj_xhfp_cont.library_id WHERE rep_robj_xhfp_cont.content_id = " . $db->quote($h5pContentId, "integer"));
+                            $questionsXhfp[] = $db->fetchAssoc($hset)["name"];
+                        }
+                    }
+                    
                     $lmContent[] = [
                         "title" => $lmObj['title'],
-                        "xmlContent" => $lmPage->getXMLContent(),
-                        "multimediaXml" => $lmPage->getMultimediaXML()
+                        "type" => $lmObj['type'],
+                        "parent" => $lmObj['parent'],
+                        "obj_id" => $lmObj['obj_id'],
+                        "xmlContent" => $xmlContent,
+                        "multimediaXml" => $lmPage->getMultimediaXML(),
+                        "questionsXml" => count($questionIds) > 0 ? $pool->questionsToXML($questionIds) : "",
+                        "questionsXhfp" => $questionsXhfp
+                    ];
+                } else if ($lmObj['type'] == "st") {
+                    $lmContent[] = [
+                        "title" => $lmObj['title'],
+                        "type" => $lmObj['type'],
+                        "parent" => $lmObj['parent'],
+                        "obj_id" => $lmObj['obj_id'],
                     ];
                 }
             }
