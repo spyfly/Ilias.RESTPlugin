@@ -115,8 +115,8 @@ final class ILIASAppModel extends Libs\RESTModel
                     if (count($h5pRaw[1]) > 0) {
                         $db = $this->db;
                         foreach ($h5pRaw[1] as $h5pContentId) {
-                            $hset = $db->query("SELECT name FROM rep_robj_xhfp_lib LEFT JOIN rep_robj_xhfp_cont ON rep_robj_xhfp_lib.library_id = rep_robj_xhfp_cont.library_id WHERE rep_robj_xhfp_cont.content_id = " . $db->quote($h5pContentId, "integer"));
-                            $questionsXhfp[] = $db->fetchAssoc($hset)["name"];
+                            $hset = $db->query("SELECT name, parameters, rep_robj_xhfp_cont.title, content_id FROM rep_robj_xhfp_lib LEFT JOIN rep_robj_xhfp_cont ON rep_robj_xhfp_lib.library_id = rep_robj_xhfp_cont.library_id WHERE rep_robj_xhfp_cont.content_id = " . $db->quote($h5pContentId, "integer"));
+                            $questionsXhfp[] = $db->fetchAssoc($hset);
                         }
                     }
                     
