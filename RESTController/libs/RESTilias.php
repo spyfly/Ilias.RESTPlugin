@@ -1,10 +1,12 @@
 <?php
+
 /**
  * ILIAS REST Plugin for the ILIAS LMS
  *
  * Authors: D.Schaefer, T.Hufschmidt <(schaefer|hufschmidt)@hrz.uni-marburg.de>
  * Since 2014
  */
+
 namespace RESTController\libs;
 
 // This allows us to use shortcuts instead of full quantifier
@@ -168,10 +170,10 @@ class RESTilias
 
         // Remember original values
         $_ORG_SERVER = array(
-      'HTTP_HOST' => $_SERVER['HTTP_HOST'],
-      'REQUEST_URI' => $_SERVER['REQUEST_URI'],
-      'PHP_SELF' => $_SERVER['PHP_SELF'],
-    );
+            'HTTP_HOST' => $_SERVER['HTTP_HOST'],
+            'REQUEST_URI' => $_SERVER['REQUEST_URI'],
+            'PHP_SELF' => $_SERVER['PHP_SELF'],
+        );
 
         // Overwrite $_SERVER entries which would confuse ILIAS during initialisation
         $_SERVER['REQUEST_URI'] = '';
@@ -376,7 +378,7 @@ class RESTilias
             $userId,
             $token,
             $sessionId
-    );
+        );
         $query = $database->query($sql);
         if ($database->numRows($query) == 0) {
             return false;
@@ -388,7 +390,7 @@ class RESTilias
       SELECT * FROM usr_session WHERE user_id = %d AND session_id = %s',
             $userId,
             $sessionId
-    );
+        );
         $query = $database->query($sql);
         $row = $database->fetchAssoc($query);
         if (!isset($row) || $row['expires'] <= time()) {
@@ -463,59 +465,20 @@ class RESTilias
      */
     public static function createSession($userId)
     {
-        // fetch username (makes also sure user exists)
-        $userName = self::getUserName($userId);
-
         // Delete old sessions
         self::deleteSession($userId);
 
         // Iitialize Authorization in ILIAS
-        require_once('Services/Authentication/classes/class.ilAuthUtils.php');
-        \ilAuthUtils::_initAuth();
+        $auth_session = \ilAuthSession::getInstance(ilLoggerFactory::getLogger("auth"));
 
         // Authenticate user (this will generate a session in usr_session and send PHPSESSID cookie)
-        global $ilAuth;
-        $ilAuth->setAuth($userName);
-        $ilAuth->start();
+        $auth_session->init();
+        $auth_session->setAuthenticated(true, $userId);
 
-        // Used to return session-cookies
-        $result = array();
-
-        // Fetch headers (waiting to be) send by php
-        $headers = headers_list();
-        foreach ($headers as $header) {
-            // We are only looking for cookies
-            if (substr($header, 0, 12) === 'Set-Cookie: ') {
-                // Extract cookie-settings
-                $cookie = array();
-                $settings = explode(';', substr($header, 12));
-                foreach ($settings as $key => $value) {
-                    $value = trim($value);
-                    $pairs = explode('=', $value);
-                    $cookie[$pairs[0]] = $pairs[1];
-                }
-
-                // Got session-cookie?
-                if (array_key_exists('PHPSESSID', $cookie)) {
-                    $result[] = array(
-            'key' => 'PHPSESSID',
-            'value' => $cookie['PHPSESSID'],
-            'expires' => 0,
-            'path' => $cookie['path']
-          );
-                } elseif (array_key_exists('authchallenge', $cookie)) {
-                    $result[] = array(
-            'key' => 'authchallenge',
-            'value' => $cookie['authchallenge'],
-            'expires' => 0,
-            'path' => $cookie['path']
-          );
-                }
-            }
-        }
-
-        // Return session cookie data
-        return $result;
+        // Return PHPSESSID Cookie
+        return [
+            'PHPSESSID' => $auth_session->getId()
+        ];
     }
 
 
@@ -590,9 +553,9 @@ class RESTilias
             self::MSG_NO_OBJECT_BY_REF,
             self::ID_NO_OBJECT_BY_REF,
             array(
-        'ref_id' => $refId
-      )
-    );
+                'ref_id' => $refId
+            )
+        );
     }
 
 
@@ -630,9 +593,9 @@ class RESTilias
             self::MSG_NO_OBJECT_BY_OBJ,
             self::ID_NO_OBJECT_BY_OBJ,
             array(
-        'obj_id' => $objId
-      )
-    );
+                'obj_id' => $objId
+            )
+        );
     }
 
 
@@ -704,9 +667,9 @@ class RESTilias
             self::MSG_NO_USER_BY_ID,
             self::ID_NO_USER_BY_ID,
             array(
-        'id' => $userId
-      )
-    );
+                'id' => $userId
+            )
+        );
     }
 
 
@@ -744,9 +707,9 @@ class RESTilias
             self::MSG_NO_USER_BY_NAME,
             self::ID_NO_USER_BY_NAME,
             array(
-        'name' => $userName
-      )
-    );
+                'name' => $userName
+            )
+        );
     }
 }
 
